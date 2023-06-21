@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ '*' ]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}-latest
+
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        os: [ ubuntu, windows, macos ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Find Version
+        if: startsWith(github.ref, 'refs/tags/')
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: image
+          tags: type=semver,pattern={{version}}
+
+      - name: Set Cargo.toml version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          perl -pi -w -e "s/0\\.0\\.0-git/${{ steps.meta.outputs.version }}/g;" Cargo.toml          
+          perl -pi -w -e "s/0\\.0\\.0-git/${{ steps.meta.outputs.version }}/g;" matryoshka-core/Cargo.toml
+          perl -pi -w -e "s/0\\.0\\.0-git/${{ steps.meta.outputs.version }}/g;" matryoshka-cli/Cargo.toml
+
+          perl -pi -w -e "s/0\\.0\\.0-git/${{ steps.meta.outputs.version }}/g;" Cargo.lock
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Rename binary
+        if: matrix.os != 'windows'
+        run: |
+          mv target/release/matryoshka-cli matryoshka-cli_${{ matrix.os }}
+
+      - name: Rename binary (win)
+        if: matrix.os == 'windows'
+        run: |
+          mv target/release/matryoshka-cli.exe matryoshka-cli_${{ matrix.os }}.exe
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: matryoshka-cli_${{ matrix.os }}
+          path: matryoshka-cli_${{ matrix.os }}*
+
+      - uses: alexellis/upload-assets@0.4.0
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: '["matryoshka-cli_${{ matrix.os }}*"]'

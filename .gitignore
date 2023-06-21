@@ -1,0 +1,7 @@
+data
+target
+*.exe
+.idea
+*.7z
+*.json
+*.iml
