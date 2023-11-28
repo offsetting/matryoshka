@@ -57,20 +57,15 @@ mod base64 {
   }
 }
 
-pub fn decode<R: Read + Seek>(
-  read: &mut R,
-  endian: Endian,
-) -> anyhow::Result<IndexMap<String, ContainerData>> {
-  let magic: [u8; 8] = read.read_type(endian)?;
+pub fn decode<R: Read + Seek>(read: &mut R) -> anyhow::Result<IndexMap<String, ContainerData>> {
+  let mut magic: [u8; 8] = [0u8; 8];
+  read.read_exact(&mut magic)?;
 
-  if &magic
-    != match endian {
-      Endian::Big => b"\x45\x01\x76\x29\x3f\x8c\xcc\xcd",
-      Endian::Little => b"\x29\x76\x01\x45\xCD\xCC\x8C\x3F",
-    }
-  {
-    return Err(anyhow!("Invalid magic, maybe wrong endian?"));
-  }
+  let endian = match magic {
+    [0x29, 0x76, 0x01, 0x45, 0xcd, 0xcc, 0x8c, 0x3f] => Endian::Little,
+    [0x45, 0x01, 0x76, 0x29, 0x3f, 0x8c, 0xcc, 0xcd] => Endian::Big,
+    _ => return Err(anyhow!("Invalid magic: {magic:x?}")),
+  };
 
   let header: OctHeader = read.read_type(endian)?;
 

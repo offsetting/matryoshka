@@ -58,8 +58,6 @@ enum Command {
   Decode {
     in_file: PathBuf,
     out_file: PathBuf,
-    #[clap(short, long, default_value_t = Endian::Little)]
-    endian: Endian,
     #[clap(short, long, default_value_t = Format::Json)]
     format: Format,
   },
@@ -80,12 +78,11 @@ fn main() -> anyhow::Result<()> {
     Command::Decode {
       in_file,
       out_file,
-      endian,
       format,
     } => {
       let mut file = BufReader::new(File::open(in_file)?);
 
-      let data = decode(&mut file, endian.into())?;
+      let data = decode(&mut file)?;
 
       let mut file = BufWriter::new(File::create(out_file)?);
 
