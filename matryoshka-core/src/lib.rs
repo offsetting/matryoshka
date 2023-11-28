@@ -57,7 +57,9 @@ mod base64 {
   }
 }
 
-pub fn decode<R: Read + Seek>(read: &mut R) -> anyhow::Result<IndexMap<String, ContainerData>> {
+pub fn decode<R: Read + Seek>(
+  read: &mut R,
+) -> anyhow::Result<(IndexMap<String, ContainerData>, Endian)> {
   let mut magic: [u8; 8] = [0u8; 8];
   read.read_exact(&mut magic)?;
 
@@ -110,7 +112,7 @@ pub fn decode<R: Read + Seek>(read: &mut R) -> anyhow::Result<IndexMap<String, C
   }
 
   if let Data::Container(children) = root_node.data.try_into()? {
-    Ok(children)
+    Ok((children, endian))
   } else {
     Err(anyhow!("Expected root node to be an container"))
   }

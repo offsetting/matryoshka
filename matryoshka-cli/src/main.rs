@@ -82,7 +82,8 @@ fn main() -> anyhow::Result<()> {
     } => {
       let mut file = BufReader::new(File::open(in_file)?);
 
-      let data = decode(&mut file)?;
+      let (data, endian) = decode(&mut file)?;
+      println!("Read file with endian: {}", endian);
 
       let mut file = BufWriter::new(File::create(out_file)?);
 
