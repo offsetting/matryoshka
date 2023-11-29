@@ -90,8 +90,8 @@ impl BinRead for RawNode {
 
     let node = Node {
       id: match name {
-        Some(name) => format!("{}#{}", key, name),
-        None => key,
+        Some(name) => format!("{}#{}", key.clone(), name),
+        None => key.clone(),
       },
       data: match (header.data_type(), header.r#type()) {
         (DataType::None, Type::Container) => NodeData::Container(vec![]),
@@ -402,10 +402,11 @@ fn read_i32<R: Read + Seek>(reader: &mut R, endian: Endian, len: usize) -> BinRe
   // -128:                         10000000
   // -128: 11111111111111111111111110000000
 
-  let neg_mask = 1 << ((len * 8) - 1);
+  let bit_size = len as u32 * 8;
+  let neg_mask = 1 << (bit_size - 1);
 
   if data & neg_mask == neg_mask {
-    let mask = u32::MAX ^ (2u32.pow(len as u32 * 8) - 1);
+    let mask = u32::MAX ^ (neg_mask - 1);
     Ok((data | mask) as i32)
   } else {
     Ok(data as i32)
